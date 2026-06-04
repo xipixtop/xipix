@@ -1,0 +1,185 @@
+<html lang="pt-BR">
+<head>
+    <title>S.O.S TI - Painel de Controle e Monitoramento Total</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <hta:application 
+        id="oSosTI"
+        applicationname="PainelCriseTI"
+        border="thick"
+        caption="yes"
+        maximizebutton="yes"
+        minimizebutton="yes"
+        scroll="yes"
+        singleinstance="yes"
+        windowstate="normal"
+    />
+
+    <style>
+        body {
+            font-family: 'Consolas', monospace;
+            background-color: #05070a;
+            color: #00ff66;
+            margin: 15px;
+        }
+        .header {
+            border: 2px dashed #ff3333;
+            padding: 10px;
+            text-align: center;
+            background-color: #1a0505;
+            color: #ff3333;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        .box {
+            background-color: #0d1117;
+            border: 1px solid #00ff66;
+            border-radius: 4px;
+            padding: 10px;
+            width: 300px;
+        }
+        .box h2 {
+            font-size: 13px;
+            color: #17a2b8;
+            margin-top: 0;
+            border-bottom: 1px dashed #00ff66;
+            padding-bottom: 3px;
+        }
+        .box-nsa {
+            border-color: #ffaa00;
+        }
+        .box-nsa h2 {
+            color: #ffaa00;
+            border-bottom: 1px dashed #ffaa00;
+        }
+        .btn {
+            background-color: #111;
+            color: #00ff66;
+            border: 1px solid #00ff66;
+            padding: 5px;
+            margin: 3px 0;
+            width: 100%;
+            cursor: pointer;
+            text-align: left;
+            font-size: 11px;
+        }
+        .btn:hover {
+            background-color: #00ff66;
+            color: #000;
+        }
+        .btn-nsa {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+        .btn-nsa:hover {
+            background-color: #ffaa00;
+            color: #000;
+        }
+        .btn-critico {
+            border-color: #ff3333;
+            color: #ff3333;
+        }
+        .btn-critico:hover {
+            background-color: #ff3333;
+            color: #000;
+        }
+        #terminal {
+            background-color: #000;
+            color: #00ff66;
+            padding: 10px;
+            border: 1px solid #00ff66;
+            height: 250px;
+            overflow-y: scroll;
+            margin-top: 15px;
+            font-size: 11px;
+            white-space: pre-wrap;
+        }
+    </style>
+
+    <script language="VBScript">
+        Sub Window_OnLoad
+            window.resizeTo 1020, 800
+        End Sub
+
+        Function Rodar(cmd)
+            Set shell = CreateObject("WScript.Shell")
+            Document.GetElementById("terminal").InnerText = "[S.O.S] Processando operacao estrutural..." & vbCrLf
+            fTemp = shell.ExpandEnvironmentStrings("%TEMP%") & "\sos_out.txt"
+            shell.Run "cmd /c " & cmd & " > """ & fTemp & """ 2>&1", 0, True
+            
+            Set fso = CreateObject("Scripting.FileSystemObject")
+            If fso.FileExists(fTemp) Then
+                Set f = fso.OpenTextFile(fTemp, 1)
+                If Not f.AtEndOfStream Then 
+                    txt = f.ReadAll
+                Else 
+                    txt = "[!] Comando executado sem retorno de texto."
+                End If
+                f.Close
+                fso.DeleteFile(fTemp)
+                Document.GetElementById("terminal").InnerText = txt
+            Else
+                Document.GetElementById("terminal").InnerText = "[!] Erro ao capturar o console."
+            End If
+        End Function
+
+        Sub MatarTravados()
+            Dim c
+            c = "taskkill /f /fi " & Chr(34) & "STATUS eq NOT RESPONDING" & Chr(34)
+            Rodar(c)
+        End Sub
+
+        Sub DesconectarRDP()
+            Dim c
+            c = "logoff 1 & logoff 2"
+            Rodar(c)
+        End Sub
+    </script>
+</head>
+<body>
+
+    <div class="header">PAINEL DE RECUPERAÇÃO DE DESASTRES - CONTROLE TOTAL TI</div>
+
+    <div class="grid">
+        <!-- HARDWARE: SOBREVIVÊNCIA FISICA -->
+        <div class="box">
+            <h2>🔋 Hardware & Estabilidade</h2>
+            <button class="btn" onclick="vbs:Rodar('wmic computersystem get totalphysicalmemory')">Mapear RAM Total Disponível</button>
+            <button class="btn" onclick="vbs:Rodar('wmic pagefile get /value')">Verificar Arquivo de Paginação (Swap)</button>
+            <button class="btn" onclick="vbs:Rodar('wmic diskdrive get status')">Diagnóstico de Barramento de Disco</button>
+            <button class="btn" onclick="vbs:Rodar('powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c')">Forçar Modo Máximo Desempenho</button>
+            <button class="btn-critico btn" onclick="vbs:Rodar('wbadmin get status')">Verificar Último Backup do Servidor</button>
+        </div>
+
+        <!-- SOFTWARE & REDE -->
+        <div class="box">
+            <h2>🛡️ Software, GPO & Redes</h2>
+            <button class="btn" onclick="vbs:Rodar('netsh int ip reset')">Resetar Pilha de Rede TCP/IP (Pós-Ataque)</button>
+            <button class="btn" onclick="vbs:Rodar('netsh advfirewall set allprofiles state on')">Trancar Tudo: Ativar Todos os Firewalls</button>
+            <button class="btn" onclick="vbs:Rodar('gpresult /r')">Verificar Escopo de Diretivas Ativas (GPO)</button>
+            <button class="btn" onclick="vbs:MatarTravados()">Matar Todos os Softwares Travados</button>
+            <button class="btn-critico btn" onclick="vbs:Rodar('DISM /Online /Cleanup-Image /RestoreHealth')">Reparar Imagem Corrompida do Windows</button>
+        </div>
+
+        <!-- RASTREAMENTO ESTILO NSA (INIMIGO DO ESTADO) -->
+        <div class="box box-nsa">
+            <h2>👁️ Rastreamento Estilo NSA</h2>
+            <button class="btn btn-nsa" onclick="vbs:Rodar('netstat -f')">Interceptar Conexões Ativas com Domínios Externos</button>
+            <button class="btn btn-nsa" onclick="vbs:Rodar('qprocess *')">Mapear Quem está Ativo no Sistema (Usuários/PIDs)</button>
+            <button class="btn btn-nsa" onclick="vbs:Rodar('wmic process get name,executablepath,processid')">Localizar Origem Física de Binários em Execução</button>
+            <button class="btn btn-nsa" onclick="vbs:Rodar('net session')">Listar Conexões de Rede Ativas Estabelecidas</button>
+            <button class="btn-nsa btn" onclick="vbs:Rodar('ipconfig /displaydns')">Exibir Histórico de Sites Acessados (Cache DNS)</button>
+        </div>
+    </div>
+
+    <div style="font-weight: bold; margin-top: 10px; font-size: 12px; color: #ff3333;">Terminal de Resposta Tática:</div>
+    <div id="terminal">Pronto para execução em ambiente de crise. Módulo de Rastreamento Carregado...</div>
+
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratório Avançado de Infraestrutura - Diagnóstico e Redes</title>
+    <style>
+        :root {
+            --bg: #0b0f19; --card: #1e293b; --text: #f8fafc; --muted: #64748b;
+            --router: #ef4444; --switch: #3b82f6; --pc: #10b981; --voip: #eab308; --cam: #a855f7; --cloud: #06b6d4;
+        }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        h1, h2, h3, p { text-align: center; margin: 5px; }
+        .subtitle { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+        .layout { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1200px; }
+        
+        /* Topologia */
+        .net-container { position: relative; display: flex; flex-direction: column; align-items: center; gap: 45px; padding: 30px; background: var(--card); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); box-sizing: border-box; width: 100%; }
+        .net-row { display: flex; justify-content: center; gap: 20px; width: 100%; flex-wrap: wrap; z-index: 2; }
+        .cloud-box { border: 2px dashed var(--cloud-color); background: rgba(6, 182, 212, 0.02); border-radius: 10px; padding: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; position: relative; box-sizing: border-box; }
+        .vlan-zone { border-radius: 8px; padding: 20px 10px; display: flex; gap: 10px; position: relative; flex-wrap: wrap; justify-content: center; flex: 1; min-width: 240px; }
+        .vlan-10 { border: 2px dashed var(--pc); background: rgba(16, 185, 129, 0.02); }
+        .vlan-20 { border: 2px dashed var(--voip); background: rgba(234, 179, 8, 0.02); }
+        .vlan-30 { border: 2px dashed var(--cam); background: rgba(168, 85, 247, 0.02); }
+        .tag { position: absolute; top: -10px; left: 12px; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; color: #000; }
+        
+        /* Nós */
+        .device { background: #0f172a; border: 2px solid #334155; padding: 10px 14px; border-radius: 6px; font-weight: bold; text-align: center; cursor: pointer; transition: all 0.2s; min-width: 90px; }
+        .device:hover { transform: scale(1.04); border-color: #94a3b8; }
+        .device span { display: block; font-size: 10px; font-weight: normal; opacity: 0.7; margin-top: 3px; }
+        .r-node { border-color: var(--router); } .s-node { border-color: var(--switch); width: 220px; }
+        .p-node { border-color: var(--pc); } .v-node { border-color: var(--voip); } .c-node { border-color: var(--cam); }
+        
+        /* Cabos SVG */
+        .svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .cable { stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5; animation: flow 25s linear infinite; }
+        .cable.trunk { stroke: #ff00ff; stroke-width: 3; } .cable.vpn { stroke: #f97316; stroke-width: 3; } .cable.poe { stroke: #c084fc; stroke-width: 2.5; }
+        @keyframes flow { to { stroke-dashoffset: -1000; } }
+
+        /* Consoles de Teste */
+        .panel { background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .tool-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .btn { background: #3b82f6; color: #fff; border: none; padding: 6px 12px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #2563eb; } .btn-orange { background: #f97316; } .btn-orange:hover { background: #ea580c; }
+        .term { background: #030712; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 12px; color: #38bdf8; height: 125px; overflow-y: auto; border: 1px solid #334155; text-align: left; }
+
+        /* Modal Deslizante */
+        .side-modal { position: fixed; top: 0; right: -520px; width: 100%; max-width: 480px; height: 100vh; background: #0f172a; z-index: 10; transition: right 0.3s ease; padding: 20px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #334155; text-align: left; }
+        .side-modal.open { right: 0; }
+        .close { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; float: right; }
+        pre { background: #020617; padding: 8px; border-radius: 4px; color: #10b981; font-size: 11px; overflow-x: auto; border: 1px solid #1e293b; margin: 4px 0; }
+        .f-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; }
+        .field { background: #1e293b; border: 1px solid #475569; color: #fff; padding: 4px; border-radius: 4px; width: 130px; font-family: monospace; font-size: 11px; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 9; display: none; }
+        .overlay.show { display: block; }
+    </style>
+</head>
+<body>
+
+    <h1>Laboratório Acadêmico Avançado de Infraestrutura</h1>
+    <p class="subtitle">Análise de Tráfego LAN/WAN, Roteamento Baseado em VLANs e Canal VoIP</p>
+
+    <div class="layout">
+        <!-- TOPOLOGIA -->
+        <div class="net-container" id="netBox">
+            <svg class="svg-layer" id="svgWires"></svg>
+            
+            <div class="cloud-box" style="border: 2px dashed #06b6d4;">
+                <div class="tag" style="background:#06b6d4;">☁️ INFRAESTRUTURA CLOUD (Containers Isolados)</div>
+                <div class="net-row">
+                    <div class="device" style="border-color:#06b6d4;" id="n-ad" onclick="openMeta('ad')">📦 Samba4 AD DC<span>10.0.0.5</span></div>
+                    <div class="device" style="border-color:#06b6d4;" id="n-fs" onclick="openMeta('fs')">📦 File Server<span>10.0.0.10</span></div>
+                    <div class="device r-node" id="n-fw" onclick="openMeta('fw')">🛡️ FW / VPN Server<span>185.45.10.2</span></div>
+                </div>
+            </div>
+
+            <div class="net-row" style="justify-content: space-around;">
+                <div class="device r-node" id="n-rt" onclick="openMeta('rt')">🔴 Roteador_01<span>Cisco ISR 1941</span></div>
+                <div class="device s-node" id="n-sw" onclick="openMeta('sw')">🔵 Switch_01 (PoE)<span>Catalyst 2960</span></div>
+            </div>
+
+            <div class="net-row">
+                <div class="vlan-zone vlan-10"><div class="tag">VLAN 10 - Dados (Portas 2-10)</div>
+                    <div class="device p-node" id="pc1" onclick="openMeta('pc1')">CPU 01<span id="l-pc1">192.168.10.11</span></div>
+                    <div class="device p-node" id="pc2" onclick="openMeta('pc2')">CPU 02<span id="l-pc2">192.168.10.12</span></div>
+                </div>
+                <div class="vlan-zone vlan-20"><div class="tag">VLAN 20 - Voz (Porta 24)</div>
+                    <div class="device v-node" id="vp1" onclick="openMeta('vp1')">Grandstream<span id="l-vp1">192.168.20.50</span></div>
+                </div>
+                <div class="vlan-zone vlan-30"><div class="tag">VLAN 30 - CFTV (Portas 11-12)</div>
+                    <div class="device c-node" id="cm1" onclick="openMeta('cm1')">Cam Dome 01<span id="l-cm1">192.168.30.11</span></div>
+                    <div class="device c-node" id="cm2" onclick="openMeta('cm2')">Cam Dome 02<span id="l-cm2">192.168.30.12</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UTILS DIAGNOSTICO -->
+        <div class="panel">
+            <h3 style="text-align:left; font-size:14px; margin-bottom:10px;">📟 Console de Testes Unificados (ICMP Ping & Trace Route)</h3>
+            <div class="tool-bar">
+                <button class="btn" onclick="runPing('192.168.10.1')">Ping Gateway Local</button>
+                <button class="btn" onclick="runPing(nodesData.cm1.ip)">Ping Intelbras Cam 01</button>
+                <button class="btn" onclick="runPing('10.0.0.10')">Ping File Server (Nuvem)</button>
+                <button class="btn btn-orange" onclick="runTrace('10.0.0.10')">Tracert File Server</button>
+                <button class="btn btn-orange" onclick="runTrace('8.8.8.8')">Tracert Internet (WAN)</button>
+            </div>
+            <div class="term" id="consoleOut">Laboratório pronto. Selecione uma ferramenta de diagnóstico acima ou clique nos ativos para gerenciar.</div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="overlay" id="mask" onclick="closeMeta()"></div>
+    <div class="side-modal" id="modalBox">
+        <button class="close" onclick="closeMeta()">&times;</button>
+        <h3 id="mTitle" style="margin-top:0; color:var(--switch);">Propriedades</h3>
+        <div id="mBody"></div>
+    </div>
+
+    <script>
+        // Banco de Dados Limpo
+        const nodesData = {
+            pc1: { name:"CPU 01", ip:"192.168.10.11", mask:"255.255.255.0", gw:"192.168.10.1", dns:"8.8.8.8" },
+            pc2: { name:"CPU 02", ip:"192.168.10.12", mask:"255.255.255.0", gw:"192.168.10.1", dns:"8.8.8.8" },
+            vp1: { name:"VoIP Grandstream GRP2601", ip:"192.168.20.50", mask:"255.255.255.0", gw:"192.168.20.1", ramal:"4001", server:"192.168.20.10", codec:"G.711u (PCM)" },
+            cm1: { name:"Intelbras Dome VIP 1230 G4", ip:"192.168.30.11", mask:"255.255.255.0", gw:"192.168.30.1", stream:"H.265 / 30 FPS", proto:"Onvif Profile S" },
+            cm2: { name:"Intelbras Dome VIP 1230 G4", ip:"192.168.30.12", mask:"255.255.255.0", gw:"192.168.30.1", stream:"H.265 / 30 FPS", proto:"Onvif Profile S" }
+        };
+
+        function saveConfig(key) {
+            nodesData[key].ip = document.getElementById(`${key}-ip`).value;
+            nodesData[key].mask = document.getElementById(`${key}-mask`).value;
+            nodesData[key].gw = document.getElementById(`${key}-gw`).value;
+            if(document.getElementById(`${key}-dns`)) nodesData[key].dns = document.getElementById(`${key}-dns`).value;
+            if(document.getElementById(`${key}-codec`)) nodesData[key].codec = document.getElementById(`${key}-codec`).value;
+            if(document.getElementById(`${key}-ramal`)) nodesData[key].ramal = document.getElementById(`${key}-ramal`).value;
+            if(document.getElementById(`${key}-stream`)) nodesData[key].stream = document.getElementById(`${key}-stream`).value;
+            
+            document.getElementById(`l-${key}`).innerText = nodesData[key].ip;
+            document.getElementById('consoleOut').innerHTML = `[SISTEMA]: Parâmetros de rede do dispositivo ${nodesData[key].name} gravados com sucesso.`;
+        }
+
+        function runPing(target) {
+            const out = document.getElementById('consoleOut');
+            out.innerHTML = `C:\\> ping ${target}<br>Disparando contra a infraestrutura com 32 bytes de dados:<br>`;
+            let seq = 1;
+            const t = setInterval(() => {
+                if(seq <= 4) {
+                    out.innerHTML += `&nbsp;&nbsp;Resposta de ${target}: bytes=32 tempo=${(Math.random()*10+2).toFixed(0)}ms TTL=64<br>`;
+                    out.scrollTop = out.scrollHeight; seq++;
+                } else {
+                    clearInterval(t); out.innerHTML += `Pacotes: Enviados = 4, Recebidos = 4, Perdidos = 0 (0% de perda).<br>`;
+                }
+            }, 150);
+        }
+
+        function runTrace(target) {
+            const out = document.getElementById('consoleOut');
+            out.innerHTML = `C:\\> tracert ${target}<br>Rastreando a rota para ${target} com o limite de 30 saltos:<br><br>`;
+            
+            let hop = 1;
+            const routes = target === '8.8.8.8' ? ['192.168.10.1', '185.45.10.1', '8.8.8.8'] : ['192.168.10.1', '185.45.10.2', '10.0.0.1', target];
+            
+            const t = setInterval(() => {
+                if(hop <= routes.length) {
+                    const ip = routes[hop-1];
+                    out.innerHTML += `&nbsp;&nbsp;${hop} &nbsp;&nbsp; ${(Math.random()*4+1).toFixed(0)} ms &nbsp;&nbsp; ${(Math.random()*4+2).toFixed(0)} ms &nbsp;&nbsp; ${ip}<br>`;
+                    out.scrollTop = out.scrollHeight; hop++;
+                } else {
+                    clearInterval(t); out.innerHTML += `<br>Rastreamento concluído. Sucesso no tráfego de Camada 3 Inter-VLAN / WAN.`;
+                }
+            }, 250);
+        }
+
+        function openMeta(key) {
+            const t = document.getElementById('mTitle'); const b = document.getElementById('mBody');
+            
+            if(key.startsWith('pc')) {
+                const pc = nodesData[key]; t.innerText = `⚙️ Parâmetros: ${pc.name}`;
+                b.innerHTML = `<div style="background:#1e293b; padding:12px; border-radius:6px; border-left:4px solid var(--pc);">
+                    <div class="f-row"><label>Endereço IP:</label><input class="field" id="${key}-ip" value="${pc.ip}"></div>
+                    <div class="f-row"><label>Máscara:</label><input class="field" id="${key}-mask" value="${pc.mask}"></div>
+                    <div class="f-row"><label>Gateway:</label><input class="field" id="${key}-gw" value="${pc.gw}"></div>
+                    <div class="f-row"><label>DNS Server:</label><input class="field" id="${key}-dns" value="${pc.dns}"></div>
+                    <button class="btn" style="width:100%; margin-top:8px; background:var(--pc);" onclick="saveConfig('${key}')">Gravar em Memória</button>
+                </div><p style="font-size:11px; color:var(--muted); text-align:left; margin-top:10px;">Hosts na VLAN 10 (Dados) caem na faixa de escopo DHCP gerenciada pelo Roteador.</p>`;
+            } 
+            else if(key === 'vp1') {
+                const vp = nodesData.vp1; t.innerText = `⚙️ Canal de Voz: ${vp.name}`;
+                b.innerHTML = `<div style="background:#1e293b; padding:12px; border-radius:6px; border-left:4px solid var(--voip);">
+                    <div class="f-row"><label>Endereço IP:</label><input class="field" id="vp1-ip" value="${vp.ip}"></div>
+                    <div class="f-row"><label>Gateway:</label><input class="field" id="vp1-mask" value="${vp.mask}"></div>
+                    <div class="f-row"><label>Máscara:</label><input class="field" id="vp1-gw" value="${vp.gw}"></div>
+                    <div class="f-row"><label>Número do Ramal:</label><input class="field" id="vp1-ramal" value="${vp.ramal}"></div>
+                    <div class="f-row"><label>Codec de Áudio:</label><input class="field" id="vp1-codec" value="${vp.codec}"></div>
+                    <button class="btn" style="width:100%; margin-top:8px; background:var(--voip); color:#000;" onclick="saveConfig('vp1')">Atualizar Canal VoIP</button>
+                </div><h4 style="margin:10px 0 3px 0;">Isolamento de Tráfego de Voz:</h4><p style="font-size:11px; color:var(--muted); text-align:left; margin:0;">O telefone é programado na VLAN 20. O tráfego de sinalização SIP e fluxo RTP de áudio rodam isolados, prevenindo picotes ou perda de pacotes de voz durante picos de download.</p>`;
+            }
+            else if(key.startsWith('cm')) {
+                const cm = nodesData[key]; t.innerText = `⚙️ CFTV: ${cm.name}`;
+                b.innerHTML = `<div style="background:#1e293b; padding:12px; border-radius:6px; border-left:4px solid var(--cam);">
+                    <div class="f-row"><label>Endereço IP:</label><input class="field" id="${key}-ip" value="${cm.ip}"></div>
+                    <div class="f-row"><label>Máscara:</label><input class="field" id="${key}-mask" value="${cm.mask}"></div>
+                    <div class="f-row"><label>Gateway IP:</label><input class="field" id="${key}-gw" value="${cm.gw}"></div>
+                    <div class="f-row"><label>Compressão:</label><input class="field" id="${key}-stream" value="${cm.stream}"></div>
+                    <button class="btn" style="width:100%; margin-top:8px; background:var(--cam);" onclick="saveConfig('${key}')">Salvar Câmera</button>
+                </div><h4 style="margin:10px 0 3px 0;">Infraestrutura de CFTV (VLAN 30):</h4><p style="font-size:11px; color:var(--muted); text-align:left; margin:0;">As câmeras utilizam compressão inteligente H.265 para otimizar os fluxos gravados. Elas recebem dados e energia direto via cabo RJ45 através das portas PoE Ativas (11 e 12) do Switch.</p>`;
+            }
+            else if(key === 'rt') {
+                t.innerText = "🔴 Cisco CLI - Roteador_01 Subinterfaces";
+                b.innerHTML = `<p style="font-size:11px; margin:0 0 5px 0;">Linhas IOS Cisco de encapsulamento dot1Q aplicadas no roteador (Router-on-a-Stick):</p>
+                <pre>interface FastEthernet0/0.10\n encapsulation dot1Q 10\n ip address 192.168.10.1 255.255.255.0\n!\ninterface FastEthernet0/0.20\n encapsulation dot1Q 20\n ip address 192.168.20.1 255.255.255.0\n!\ninterface FastEthernet0/0.30\n encapsulation dot1Q 30\n ip address 192.168.30.1 255.255.255.0</pre>`;
+            }
+            else if(key === 'sw') {
+                t.innerText = "🔵 Cisco CLI - Switch_01 Mapeamento e PoE";
+                b.innerHTML = `<p style="font-size:11px; margin:0 0 5px 0;">Comandos de separação física de interfaces e ativação de energia em linha para o CFTV:</p>
+                <pre>vlan 10\n name DADOS\nvlan 20\n name VOIP\nvlan 30\n name CFTV\n!\ninterface range fa0/2 - 10\n switchport mode access\n switchport access vlan 10\n!\ninterface range fa0/11 - 12\n switchport mode access\n switchport access vlan 30\n power inline auto\n spanning-tree portfast\n!\ninterface fa0/24\n switchport mode access\n switchport access vlan 20</pre>`;
+            }
+            else {
+                t.innerText = "📦 Infraestrutura Central em Nuvem";
+                b.innerHTML = `<p style="font-size:12px;">Os recursos de segurança e arquivo estão instalados em microsserviços Docker protegidos por regras estritas de Firewall. Toda a rede local se comunica com o File Server e o AD através de chaves geradas pelo túnel de VPN.</p>`;
+            }
+
+            document.getElementById('sidePanel').classList.add('open');
+            document.getElementById('mask').classList.add('show');
+        }
+
+        function closeMeta() { document.getElementById('sidePanel').classList.remove('open'); document.getElementById('mask').classList.remove('show'); }
+
+        function drawTopology() {
+            const svg = document.getElementById('svgWires'); const box = document.getElementById('netBox').getBoundingClientRect();
+            const fw = document.getElementById('n-fw').getBoundingClientRect(); const ad = document.getElementById('n-ad').getBoundingClientRect();
+            const fs = document.getElementById('n-fs').getBoundingClientRect(); const rt = document.getElementById('n-rt').getBoundingClientRect();
+            const sw = document.getElementById('n-sw').getBoundingClientRect();
+            
+            const pc = document.getElementById('pc1').getBoundingClientRect();
+            const vp = document.getElementById('vp1').getBoundingClientRect();
+            const cm = document.getElementById('cm1').getBoundingClientRect();
+
+            const fwX = (fw.left + fw.right)/2 - box.left; const fwY = (fw.top + fw.bottom)/2 - box.top;
+            const rX = (rt.left + rt.right)/2 - box.left; const rYt = rt.top - box.top; const rYb = rt.bottom - box.top;
+            const sX = (sw.left + sw.right)/2 - box.left; const sYt = sw.top - box.top; const sYb = sw.bottom - box.top;
+
+            svg.innerHTML = `
+                <line class="cable" x1="${fwX}" y1="${fwY}" x2="${(ad.left+ad.right)/2 - box.left}" y2="${ad.bottom - box.top}" />
+                <line class="cable" x1="${fwX}" y1="${fwY}" x2="${(fs.left+fs.right)/2 - box.left}" y2="${fs.bottom - box.top}" />
+                <line class="cable vpn" x1="${fwX}" y1="${fwY}" x2="${rX}" y2="${rYt}" />
+                <line class="cable trunk" x1="${rX}" y1="${rYb}" x2="${sX}" y2="${sYt}" />
+                <line class="cable" x1="${sX}" y1="${sYb}" x2="${(pc.left+pc.right)/2 - box.left}" y2="${pc.top - box.top}" />
+                <line class="cable" x1="${sX}" y1="${sYb}" x2="${(vp.left+vp.right)/2 - box.left}" y2="${vp.top - box.top}" />
+                <line class="cable poe" x1="${sX}" y1="${sYb}" x2="${(cm.left+cm.right)/2 - box.left}" y2="${cm.top - box.top}" />
+            `;
+        }
+
+        window.addEventListener('load', () => { drawTopology(); });
+        window.addEventListener('resize', drawTopology);
+    </script>
+</body>
+</html>
