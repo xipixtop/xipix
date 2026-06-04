@@ -63,51 +63,19 @@
         <div id="erro" class="error-msg">Token de acesso inválido!</div>
     </div>
 
-    <!-- PASTA UTILITÁRIOS (Acesso Livre) -->
+    <!-- PASTA UTILITÁRIOS (Acesso Livre Direto ao Google Drive) -->
     <div class="projeto-box util">
         <div class="projeto-titulo">🛠️ Utilitários Gerais (Acesso Livre)</div>
-        <a href="utilitarios/" class="btn-pasta util-btn">
-            📂 ENTRAR NA PASTA DE UTILITÁRIOS <span>(Ver todos os arquivos)</span>
+        <a href="https://google.com" target="_blank" rel="noopener noreferrer" class="btn-pasta util-btn">
+            📂 ENTRAR NA PASTA DE UTILITÁRIOS <span>(Download via Google Drive)</span>
         </a>
     </div>
 
-    <!-- CLIENTE 1 -->
+    <!-- CLIENTE 1 (Acesso Protegido por Token Direto ao Google Drive) -->
     <div id="box-cliente_1" class="projeto-box">
         <div class="projeto-titulo">📁 Área Exclusiva - Cliente 01</div>
-        <a href="cliente_1/" class="btn-pasta">
-            📂 VISUALIZAR ARQUIVOS DO CLIENTE 01 <span>(Download Liberado)</span>
-        </a>
-    </div>
-
-    <!-- CLIENTE 2 -->
-    <div id="box-cliente_2" class="projeto-box">
-        <div class="projeto-titulo">📁 Área Exclusiva - Cliente 02</div>
-        <a href="cliente_2/" class="btn-pasta">
-            📂 VISUALIZAR ARQUIVOS DO CLIENTE 02 <span>(Download Liberado)</span>
-        </a>
-    </div>
-
-    <!-- CLIENTE 3 -->
-    <div id="box-cliente_3" class="projeto-box">
-        <div class="projeto-titulo">📁 Área Exclusiva - Cliente 03</div>
-        <a href="cliente_3/" class="btn-pasta">
-            📂 VISUALIZAR ARQUIVOS DO CLIENTE 03 <span>(Download Liberado)</span>
-        </a>
-    </div>
-
-    <!-- CLIENTE 4 -->
-    <div id="box-cliente_4" class="projeto-box">
-        <div class="projeto-titulo">📁 Área Exclusiva - Cliente 04</div>
-        <a href="cliente_4/" class="btn-pasta">
-            📂 VISUALIZAR ARQUIVOS DO CLIENTE 04 <span>(Download Liberado)</span>
-        </a>
-    </div>
-
-    <!-- CLIENTE 5 -->
-    <div id="box-cliente_5" class="projeto-box">
-        <div class="projeto-titulo">📁 Área Exclusiva - Cliente 05</div>
-        <a href="cliente_5/" class="btn-pasta">
-            📂 VISUALIZAR ARQUIVOS DO CLIENTE 05 <span>(Download Liberado)</span>
+        <a href="https://google.com" target="_blank" rel="noopener noreferrer" class="btn-pasta">
+            📂 VISUALIZAR ARQUIVOS DO CLIENTE 01 <span>(Download via Google Drive)</span>
         </a>
     </div>
 
@@ -134,16 +102,9 @@ function verificarSenha() {
     boxes.forEach(function(box) { box.style.display = 'none'; });
     erro.style.display = 'none';
 
+    // Apenas a senha do Cliente 01 ativa ativa o bloco
     if (senha === "senha123") {
         document.getElementById("box-cliente_1").style.display = "block";
-    } else if (senha === "senha456") {
-        document.getElementById("box-cliente_2").style.display = "block";
-    } else if (senha === "senha789") {
-        document.getElementById("box-cliente_3").style.display = "block";
-    } else if (senha === "senhaabc") {
-        document.getElementById("box-cliente_4").style.display = "block";
-    } else if (senha === "senhaxyz") {
-        document.getElementById("box-cliente_5").style.display = "block";
     } else {
         erro.style.display = "block";
     }
