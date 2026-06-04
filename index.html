@@ -102,8 +102,8 @@ function verificarSenha() {
     boxes.forEach(function(box) { box.style.display = 'none'; });
     erro.style.display = 'none';
 
-    // Apenas a senha do Cliente 01 ativa ativa o bloco
-    if (senha === "senha123") {
+    // Aceita o token "cliente_1" ou a senha padrão anterior "senha123"
+    if (senha === "cliente_1" || senha === "senha123") {
         document.getElementById("box-cliente_1").style.display = "block";
     } else {
         erro.style.display = "block";
